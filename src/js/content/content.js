@@ -2,16 +2,19 @@
 
 var $ = require("jquery");
 
-
 var MOVIE_CLASS_NAME = ".smallTitleCard";
 var MOVIE_NAME_ATTR = "aria-label";
+var TITLE_TAG = "movie-netflix-imdb-title";
 
+var renderingRating = function(prevNumMovies, prevUrl) {
+  if (window.location.href !== prevUrl) {
+    $(TITLE_TAG).remove();
+    return {url: window.location.href, movieCount: 0};
+  }
 
-var renderingRating = function(prevNumMovies) {
   var movieList = $(MOVIE_CLASS_NAME);
- console.log(movieList.length);
-  if (prevNumMovies >= movieList.length) {
-    return prevNumMovies;
+  if (prevNumMovies == movieList.length) {
+    return {url: prevUrl, movieCount: prevNumMovies};
   }
 
   for (var i = prevNumMovies; i < movieList.length; i++) {
@@ -27,24 +30,29 @@ var renderingRating = function(prevNumMovies) {
         // http://www.omdbapi.com/?t={title}&y=&plot=full&r=json
         $.get("https://www.omdbapi.com/?t=" + movieName  + "&y=&plot=full&r=json&tomatoes=true", function(data) {
           titleTagElement.innerHTML = "IMDB: " + data['imdbRating'];
+          $(titleTagElement).attr("movie-name", movieName)
         });
 
       })();
     }
   }
 
-  return movieList.length;
+  return {url: window.location.href , movieCount: movieList.length};
 };
 
 
 var prevNumMovies = 0;
+var prevUrl = "";
+
 setInterval(function() {
-  prevNumMovies = renderingRating(prevNumMovies);
+  var obj = renderingRating(prevNumMovies, prevUrl);
+  prevNumMovies = obj.movieCount;
+  prevUrl = obj.url;
 }, 500);
 
 function addDescription(movieElement, textDescription) {
-  console.log(movieElement);
-  var titleTagElement = document.createElement("div");
+  // console.log(movieElement);
+  var titleTagElement = document.createElement(TITLE_TAG);
 
   var linkEleWidth = movieElement.offsetWidth.toString() + "px";
   var linkEleHeight = movieElement.offsetHeight.toString() + "px";
@@ -62,7 +70,8 @@ function addDescription(movieElement, textDescription) {
     cursor: 'pointer'
   };
   $(titleTagElement).css(styles);
-  $('body').after(titleTagElement);
+  console.log(movieElement.getElementsByClassName('video-artwork'));
+  $(movieElement.getElementsByClassName('video-artwork')[0]).after(titleTagElement);
   titleTagElement.innerHTML = textDescription;
   $(titleTagElement).offset($(movieElement).offset());
 
