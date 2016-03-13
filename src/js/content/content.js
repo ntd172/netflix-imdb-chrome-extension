@@ -5,49 +5,55 @@ var $ = require("jquery");
 var MOVIE_CLASS_NAME = ".smallTitleCard";
 var MOVIE_NAME_ATTR = "aria-label";
 var TITLE_TAG = "movie-netflix-imdb-title";
+var cache = {};
 
-var renderingRating = function(prevNumMovies, prevUrl) {
+var renderingRating = function() {
   if (window.location.href !== prevUrl) {
     $(TITLE_TAG).remove();
-    return {url: window.location.href, movieCount: 0};
+    prevUrl = window.location.href;
+    return;
   }
 
   var movieList = $(MOVIE_CLASS_NAME);
-  if (prevNumMovies == movieList.length) {
-    return {url: prevUrl, movieCount: prevNumMovies};
-  }
 
-  for (var i = prevNumMovies; i < movieList.length; i++) {
+  for (var i = 0; i < movieList.length; i++) {
 
     var movie = $(movieList[i]);
     var movieName = movie.attr(MOVIE_NAME_ATTR);
 
-    if (movieName !== null && movieName !== undefined && movieName !== 'null') {
+
+    if (movieName !== null && movieName !== undefined && movieName !== 'null' && movieList[i].getElementsByTagName(TITLE_TAG).length == 0) {
+      console.log(movieName);
 
       (function () {
         var movieElement = movie[0];
         var titleTagElement = addDescription(movieElement, "");
-        // http://www.omdbapi.com/?t={title}&y=&plot=full&r=json
-        $.get("https://www.omdbapi.com/?t=" + movieName  + "&y=&plot=full&r=json&tomatoes=true", function(data) {
-          titleTagElement.innerHTML = "IMDB: " + data['imdbRating'];
-          $(titleTagElement).attr("movie-name", movieName)
-        });
+        var name = movieName;
+
+        function updateTitle(element, name, data) {
+          element.innerHTML = "IMDB: " + data['imdbRating'];
+          element.setAttribute("movie-name", name);
+        }
+
+        if (cache[name]) {
+          var data = cache[name];
+          updateTitle(titleTagElement, name, data);
+        } else {
+          // http://www.omdbapi.com/?t={title}&y=&plot=full&r=json
+          $.get("https://www.omdbapi.com/?t=" + movieName  + "&y=&plot=full&r=json&tomatoes=true", function(data) {
+            cache[name] = data;
+            updateTitle(titleTagElement, name, data);
+          });
+        }
 
       })();
     }
   }
-
-  return {url: window.location.href , movieCount: movieList.length};
 };
 
-
-var prevNumMovies = 0;
 var prevUrl = "";
-
 setInterval(function() {
-  var obj = renderingRating(prevNumMovies, prevUrl);
-  prevNumMovies = obj.movieCount;
-  prevUrl = obj.url;
+  renderingRating();
 }, 500);
 
 function addDescription(movieElement, textDescription) {
@@ -70,7 +76,6 @@ function addDescription(movieElement, textDescription) {
     cursor: 'pointer'
   };
   $(titleTagElement).css(styles);
-  console.log(movieElement.getElementsByClassName('video-artwork'));
   $(movieElement.getElementsByClassName('video-artwork')[0]).after(titleTagElement);
   titleTagElement.innerHTML = textDescription;
   $(titleTagElement).offset($(movieElement).offset());
